@@ -8,33 +8,56 @@ email = os.getenv('EMAIL_ADDRESS')
 
 id="A5032583158"
 
-url_writer = f"https://api.openalex.org/authors/{id}"
+# Get data from OpenAlex ID
+url_writer = f"https://api.openalex.org/authors"
 payload = {"mailto":email}
 
-# Get data from OpenAlex ID
-response = requests.get(url=url_writer,params=payload)
+response = requests.get(url=f"{url_writer}/{id}",params=payload)
 if response.status_code == 200:
     data = response.json()
 
 # Extract name of writer
-print(data['display_name'])
+neightbor_0 = data['display_name']
 
+# Get all works from writer
 url_works = "https://api.openalex.org/works"
 payload = {"filter": f"author.id:{id}","mailto": email}
 
-# Get all works from writer
 response = requests.get(url=url_works,params=payload)
 if response.status_code == 200:
     data = response.json()
 
-# Extract first 20 works ids from writer
-works = []
+# Extract all authors ids from the 20 works
+count_works = 0
+author_count = {}
 for work in data["results"]:
-    works.append(work['id'][21:])
-    if len(works) == 20:
+    authors = work['authorships']
+    for author in authors:
+        name = author['author']['id']
+        author_count[name] = author_count.get(name, 0) + 1 
+    count_works += 1
+    if count_works == 20:
         break
 
-print(works)
+author_data = {}
+for author in author_count:
+    payload = {"mailto":email}
+
+    response = requests.get(url=f"{url_writer}/{author}",params=payload)
+    if response.status_code == 200:
+        author_data[author] = response.json()
+        author_data[author]['connection_count'] = author_count[author]
+        print(author_data[author]['display_name'])
+    else:
+        print(response.status_code)
+        break
+
+with open("../data/output.json", "w") as file:
+    json.dump(author_data, file, indent=4)
+
+
+
+
 
 
 
